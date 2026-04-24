@@ -44,6 +44,10 @@
     .card-head{padding:22px 22px 8px}
     .card-title{font-size:20px;font-weight:800}
     .card-sub{font-size:14px;color:var(--muted);margin-top:6px;line-height:1.6}
+    .note{
+      margin-top:14px;padding:12px 14px;border:1px solid #bae6fd;background:#f0f9ff;
+      color:#075985;border-radius:16px;font-size:13px;line-height:1.6;
+    }
     .card-body{padding:0 22px 22px}
     .input{
       width:100%;padding:14px 16px;border-radius:16px;border:1px solid var(--line2);
@@ -143,7 +147,7 @@
       </div>
       <h1>Positional Encoding, under a microscope 🔬</h1>
       <p>
-        Self-attention alone does not know token order, so we add a position vector to each token embedding. The result is a new vector that carries both
+        This interactive canvas shows how positional encoding works in transformers. Self-attention alone does not know token order, so each token embedding is combined with a position vector built from sine and cosine patterns. The result carries both word meaning and sequence order.
       </p>
     </section>
 
@@ -154,8 +158,11 @@
           <div class="card-sub">Use a repeated word like “cat” or “the” to see why the same word needs different position vectors.</div>
         </div>
         <div class="card-body">
-          <input id="sentenceInput" class="input" />
+          <input id="sentenceInput" class="input" aria-label="Sentence input" />
           <div id="tokenRow" class="token-row"></div>
+          <div class="note">
+            Note: token embeddings in this demo are simulated with a deterministic function so the visualization is stable. In real transformer models, token embeddings are learned during training.
+          </div>
         </div>
       </div>
 
@@ -166,7 +173,7 @@
         </div>
         <div class="card-body">
           <div class="big-num">D = <span id="dValue">8</span></div>
-          <input id="dSlider" type="range" min="4" max="16" step="2" value="8"/>
+          <input id="dSlider" type="range" min="4" max="16" step="2" value="8" aria-label="Embedding dimension slider"/>
           <div class="card-sub" style="margin-top:10px">Bigger D means more coordinate slots to store position patterns.</div>
         </div>
       </div>
@@ -177,7 +184,7 @@
           <div class="card-sub">Watch one coordinate wiggle across positions.</div>
         </div>
         <div class="card-body">
-          <select id="dimSelect"></select>
+          <select id="dimSelect" aria-label="Focus dimension selector"></select>
           <div class="card-sub" style="margin-top:10px">The chosen dimension is currently <b id="dimLabel">d0</b>.</div>
         </div>
       </div>
@@ -318,7 +325,7 @@
         <div class="card-body">
           <div class="compare-row">
             <span class="subtle">Compare current selected position <b id="currPosLabel"></b> with</span>
-            <select id="compareSelect" style="width:180px"></select>
+            <select id="compareSelect" style="width:180px" aria-label="Compare position selector"></select>
           </div>
           <div class="tri-grid">
             <div id="compareA" class="vector-card"></div>
@@ -380,6 +387,12 @@
   </div>
 
   <script>
+    /*
+      Educational goal:
+      Help EE508 students understand why transformers need positional encoding,
+      how sinusoidal position vectors are computed, and how those vectors are
+      added to token embeddings before self-attention.
+    */
     const DEFAULT_SENTENCE = 'the white cat and the brown cat sat on the mat';
     const state = {
       sentence: DEFAULT_SENTENCE,
@@ -395,9 +408,14 @@
     ];
 
     function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
-    function tokenize(sentence){ return sentence.trim().split(/\s+/).filter(Boolean).slice(0, 18); }
+    function tokenize(sentence){
+      const tokens = sentence.trim().split(/\s+/).filter(Boolean).slice(0, 18);
+      return tokens.length ? tokens : ['token'];
+    }
     function uniqueWords(tokens){ return [...new Set(tokens)]; }
 
+    // Creates a deterministic "fake" token embedding for the selected word.
+    // This is only for visualization. Real transformer embeddings are learned.
     function pseudoEmbedding(word, D){
       let seed = 0;
       for(let i=0;i<word.length;i++) seed = (seed * 31 + word.charCodeAt(i)) % 1000003;
@@ -409,6 +427,8 @@
       return out;
     }
 
+    // Generate sinusoidal positional encoding as used in Transformers.
+    // Even dimensions use sine and odd dimensions use cosine.
     function positionalEncoding(pos, D, n = 10000){
       const pe = [];
       for(let j=0;j<D;j++){
@@ -420,6 +440,7 @@
       return pe;
     }
 
+    // Add the token embedding and positional encoding element-by-element.
     function addVec(a, b){ return a.map((v, i) => Number((v + b[i]).toFixed(3))); }
     function fmt(v){ return v >= 0 ? `+${v.toFixed(3)}` : v.toFixed(3); }
 
