@@ -143,6 +143,7 @@
     .pill {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 0.35rem;
       border-radius: 999px;
       border: 1px solid var(--line);
@@ -193,7 +194,7 @@
 <body class="p-4 lg:p-8">
   <main class="max-w-[90rem] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
     
-    <!-- LEFT SIDEBAR: Header, Controls & Info -->
+    <!-- LEFT SIDEBAR: Header & Controls -->
     <aside class="lg:col-span-4 space-y-6">
       <div class="glass rounded-3xl p-6 sm:p-7 flex flex-col gap-6 lg:sticky lg:top-8">
         <div>
@@ -213,29 +214,14 @@
           <button id="cacheToggle" class="btn bg-blue-600 text-white mt-2">KV Cache ON</button>
         </div>
       </div>
-
-      <div class="glass rounded-3xl p-5 sm:p-6 border-indigo-200 bg-indigo-50/40 shadow-lg relative overflow-hidden lg:sticky lg:top-[28rem]">
-        <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-400/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-        <div class="relative z-10 flex flex-col gap-3">
-          <div>
-            <div id="phaseKicker" class="tiny-label text-indigo-600">Step 0</div>
-            <h2 id="phaseTitle" class="text-xl font-black text-slate-900 mt-1 leading-tight">Training-time masked attention</h2>
-            <p id="phaseDesc" class="mt-2 text-sm text-slate-700 leading-relaxed font-medium">
-              During training, masked self-attention allows parallel predictions while preventing future-token cheating.
-            </p>
-          </div>
-          <div class="flex flex-wrap gap-2 mt-2">
-            <span id="cacheStatus" class="pill shadow-sm">KV cache enabled</span>
-            <span id="lookRule" class="pill shadow-sm">Rule: left only</span>
-          </div>
-        </div>
-      </div>
     </aside>
 
     <!-- MAIN COLUMN: Visualizations & Math -->
     <section class="lg:col-span-8 space-y-6">
       <div class="glass rounded-3xl p-5 sm:p-6">
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+        
+        <!-- Phase Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div id="trainingCard" class="phase-card">
             <div class="tiny-label text-amber-600">Training reference</div>
             <h3 class="text-lg font-black mt-1">Masked parallel prediction</h3>
@@ -253,7 +239,23 @@
           </div>
         </div>
 
-        <div class="relative min-h-[260px] mt-2 rounded-3xl border-2 border-slate-200 bg-white shadow-xl p-8 flex items-center justify-center overflow-hidden transition-all duration-300 ring-4 ring-slate-50">
+        <!-- Step Info (Moved here and made horizontal) -->
+        <div class="flex flex-col md:flex-row md:items-start justify-between gap-4 px-2 mt-8 mb-5">
+          <div class="flex-1">
+            <div id="phaseKicker" class="tiny-label text-indigo-600 uppercase tracking-widest font-black">STEP 0: TRAINING REFERENCE</div>
+            <h2 id="phaseTitle" class="text-2xl sm:text-3xl font-black text-slate-900 mt-1 tracking-tight">Training-time masked attention</h2>
+            <p id="phaseDesc" class="mt-2 text-sm text-slate-600 leading-relaxed font-medium max-w-2xl">
+              During training, masked self-attention allows parallel predictions while preventing future-token cheating.
+            </p>
+          </div>
+          <div class="flex flex-row md:flex-col gap-2 shrink-0 mt-2 md:mt-0">
+            <span id="cacheStatus" class="pill shadow-sm">KV cache enabled</span>
+            <span id="lookRule" class="pill shadow-sm">Rule: left only</span>
+          </div>
+        </div>
+
+        <!-- Visualizer Canvas -->
+        <div class="relative min-h-[260px] rounded-3xl border-2 border-slate-200 bg-white shadow-xl p-8 flex items-center justify-center overflow-hidden transition-all duration-300 ring-4 ring-slate-50">
           <svg id="attentionSvg" class="absolute inset-0 w-full h-full pointer-events-none overflow-visible"></svg>
           <div id="tokenRow" class="relative z-10 flex flex-wrap justify-center gap-4"></div>
         </div>
@@ -295,6 +297,7 @@
         </div>
       </div>
 
+      <!-- Horizontal Math & Cost blocks -->
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div class="glass rounded-3xl p-5 sm:p-6 flex flex-col">
           <div class="tiny-label text-slate-500">Shape tracker</div>
@@ -467,22 +470,22 @@
       document.getElementById("decodeCard").className = "phase-card" + (phase() === "decode" ? " active decode-active" : "");
 
       if (phase() === "training") {
-        phaseKicker.textContent = "Step 0";
-        phaseKicker.className = "tiny-label text-amber-600";
-        phaseTitle.textContent = "Training-time parallel prediction";
+        phaseKicker.textContent = "STEP 0: TRAINING REFERENCE";
+        phaseKicker.className = "tiny-label text-amber-600 uppercase tracking-widest font-black";
+        phaseTitle.textContent = "Training-time masked attention";
         phaseDesc.textContent = "The target sequence is known during training, so the decoder can process many positions at once. The causal mask prevents cheating.";
         diagnostic.innerHTML = "💡 <strong>Insight:</strong> Training parallelism is only possible because the correct shifted outputs are already available. The model calculates the loss for the entire sentence simultaneously.";
       } else if (phase() === "prefill") {
-        phaseKicker.textContent = "Step 1: Inference Phase 1";
-        phaseKicker.className = "tiny-label text-blue-600";
+        phaseKicker.textContent = "STEP 1: INFERENCE PHASE 1";
+        phaseKicker.className = "tiny-label text-blue-600 uppercase tracking-widest font-black";
         phaseTitle.textContent = "Prefill: Prompt Processing";
         phaseDesc.textContent = "The prompt is already known, so the model runs a parallel forward pass over all prompt tokens and stores their Keys and Values in the cache.";
         diagnostic.innerHTML = "💡 <strong>Insight:</strong> Prefill is <strong>compute-bound</strong>. The GPU is very happy here because it can utilize its massive parallel matrix-multiplication cores across the entire prompt sequence.";
       } else {
         const newTok = generatedTokens[decodeIndex()];
-        phaseKicker.textContent = `Step ${step}: Inference Phase 2`;
-        phaseKicker.className = "tiny-label text-violet-600";
-        phaseTitle.textContent = `Decode: Generate "${newTok}"`;
+        phaseKicker.textContent = `STEP ${step}: INFERENCE PHASE 2`;
+        phaseKicker.className = "tiny-label text-violet-600 uppercase tracking-widest font-black";
+        phaseTitle.textContent = `Decode: Generate "${newTok}" sequentially`;
         phaseDesc.textContent = "Future tokens are unknown, so generation is sequential: compute one token, append it to the cache, repeat.";
         diagnostic.innerHTML = cacheOn
           ? "💡 <strong>Insight:</strong> Decode is <strong>memory-bandwidth bound</strong>. The GPU parallel cores sit idle while waiting to read the entire prior KV Cache from RAM just to generate one token."
